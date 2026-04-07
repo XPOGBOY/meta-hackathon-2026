@@ -60,7 +60,7 @@ class WarehouseEnvironment(Environment):
 
     def step(self, action: WarehouseAction, timeout_s: Optional[float] = None, **kwargs) -> WarehouseObservation:
         self._state.step_count += 1
-        reward = -0.01  # small baseline penalty for efficiency
+        reward = 0.0
         done = False
         message = ""
         
@@ -79,15 +79,15 @@ class WarehouseEnvironment(Environment):
             if old_pos in self._state.items:
                 self._state.items.remove(old_pos)
                 self._state.inventory += 1
-                reward = 1.0 # high reward for task progression
+                reward = self._state.inventory / float(self._target_items_count)
                 message = f"Picked item at {old_pos}!"
             else:
-                reward = -0.1
+                reward = 0.0
                 message = "No item here to pick."
                 
         new_pos_tuple = tuple(new_pos)
         if new_pos_tuple in self._obstacles:
-            reward = -0.2
+            reward = 0.0
             message = "Hit an obstacle!"
         else:
             self._state.robot_pos = new_pos_tuple
@@ -95,10 +95,11 @@ class WarehouseEnvironment(Environment):
         # Completion Logic Check
         if len(self._state.items) == 0:
             done = True
-            reward += 2.0 # episode completion bonus
+            reward = 1.0
             message = "Success! All items picked."
         elif self._state.step_count >= self._max_steps:
             done = True
+            reward = self._state.inventory / float(self._target_items_count)
             message = "Failed: Max steps reached."
             
         return self._make_observation(done=done, reward=reward, message=message)
