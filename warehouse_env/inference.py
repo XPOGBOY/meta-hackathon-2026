@@ -16,11 +16,6 @@ if str(PROJECT_ROOT) not in sys.path:
 from warehouse_env.client import WarehouseEnv
 from warehouse_env.models import WarehouseAction
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
-HF_TOKEN = os.getenv("HF_TOKEN")
-LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
-
 Position = Tuple[int, int]
 
 MOVE_DELTAS: Dict[int, Tuple[int, int]] = {
@@ -35,12 +30,70 @@ DEFAULT_PORT_CANDIDATES = [7860, 8000, 8001, 8002]
 
 
 def build_openai_client() -> OpenAI:
-    api_key = HF_TOKEN or os.getenv("OPENAI_API_KEY") or "unused-openai-key"
-    return OpenAI(api_key=api_key, base_url=API_BASE_URL)
+    base_url = os.getenv("API_BASE_URL", "").strip()
+    api_key = os.getenv("API_KEY", "").strip()
+    if not base_url:
+        raise RuntimeError("Missing required API_BASE_URL environment variable.")
+    if not api_key:
+        raise RuntimeError("Missing required API_KEY environment variable.")
+    return OpenAI(api_key=api_key, base_url=base_url)
 
 
 def log_diagnostic(message: str) -> None:
     print(message, file=sys.stderr)
+
+
+def resolve_model_name(client: OpenAI) -> str:
+    requested_model = os.getenv("MODEL_NAME", "").strip()
+    try:
+        models = list(client.models.list())
+    except Exception as exc:
+        raise RuntimeError(f"Failed to list models through LiteLLM proxy: {exc}") from exc
+
+    if not models:
+        if requested_model:
+            return requested_model
+        raise RuntimeError("LiteLLM proxy returned no models.")
+
+    model_ids = [model.id for model in models]
+    if requested_model and requested_model in model_ids:
+        return requested_model
+    if requested_model and requested_model not in model_ids:
+        log_diagnostic(
+            f"[WARN] Requested MODEL_NAME '{requested_model}' not found in proxy models. "
+            f"Using '{model_ids[0]}' instead."
+        )
+    return model_ids[0]
+
+
+def ensure_llm_proxy_call(task_id: str) -> str:
+    client = build_openai_client()
+    model_name = resolve_model_name(client)
+
+    try:
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a concise planning assistant for a warehouse robot.",
+                },
+                {
+                    "role": "user",
+                    "content": f"Confirm readiness for task {task_id} in one short sentence.",
+                },
+            ],
+            max_tokens=16,
+            temperature=0,
+        )
+    except Exception as exc:
+        raise RuntimeError(f"LiteLLM proxy chat completion failed: {exc}") from exc
+
+    content = response.choices[0].message.content if response.choices else ""
+    log_diagnostic(
+        f"[INFO] LiteLLM proxy call succeeded with model '{model_name}': {content or 'no content returned'}"
+    )
+    return model_name
 
 
 def _normalize_base_url(raw_url: str) -> str:
@@ -282,7 +335,6 @@ def run_task(task_id: str, env_url: str) -> None:
     step_count = 0
 
     try:
-        _ = build_openai_client(), MODEL_NAME, LOCAL_IMAGE_NAME
         client = WarehouseEnv(base_url=env_url, connect_timeout_s=5.0).sync()
         with client:
             final_grader_score, step_count = execute_plan(client, task_id)
@@ -299,6 +351,13 @@ def run_inference() -> None:
         return
 
     log_diagnostic(f"[INFO] Using environment URL: {env_url}")
+    try:
+        model_name = ensure_llm_proxy_call(tasks[0])
+        log_diagnostic(f"[INFO] Using LLM model: {model_name}")
+    except Exception as exc:
+        log_diagnostic(f"[ERROR] Unable to reach LiteLLM proxy: {exc}")
+        return
+
     for idx, task_id in enumerate(tasks, start=1):
         log_diagnostic(f"[INFO] Running Task {idx}/{len(tasks)}: {task_id}")
         try:
