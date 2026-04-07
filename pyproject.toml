@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "warehouse-env"
+version = "0.1.0"
+description = "A warehouse logistics environment for LLM agents simulating automated order picking operations."
+readme = "README.md"
+authors = [{ name = "XPOGBOY" }]
+dependencies = [
+    "openenv-core",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "python-multipart",
+    "websockets",
+    "openai",
+]
+
+[project.scripts]
+server = "warehouse_env.server.app:main"
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["warehouse_env*"]
