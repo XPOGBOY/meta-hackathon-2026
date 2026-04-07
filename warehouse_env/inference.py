@@ -1,114 +1,295 @@
-import os
 import json
-from openai import OpenAI
+import os
+import sys
+from collections import deque
+from pathlib import Path
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+
+# Allow `python warehouse_env/inference.py` and `python inference.py` from inside
+# the package directory by ensuring the project root is importable.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from warehouse_env.client import WarehouseEnv
 from warehouse_env.models import WarehouseAction
 
-def run_task(task_id: str, env_url: str):
-    # Required Hackathon OpenEnv setup hooks
-    API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
-    MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
-    HF_TOKEN = os.getenv("HF_TOKEN")
-    LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
+Position = Tuple[int, int]
 
-    # Using actual OpenAI client per the requirements!
-    client = OpenAI(
-        api_key=os.getenv("OPENAI_API_KEY", HF_TOKEN or "dummy-token"),
-        base_url=API_BASE_URL
+MOVE_DELTAS: Dict[int, Tuple[int, int]] = {
+    0: (0, -1),  # Up
+    1: (0, 1),   # Down
+    2: (-1, 0),  # Left
+    3: (1, 0),   # Right
+}
+
+DEFAULT_TASKS = ["easy_picking", "medium_picking", "hard_picking"]
+DEFAULT_PORT_CANDIDATES = [7860, 8000, 8001, 8002]
+
+
+def _normalize_base_url(raw_url: str) -> str:
+    url = raw_url.strip()
+    if not url:
+        return url
+    if not url.startswith(("http://", "https://", "ws://", "wss://")):
+        url = f"http://{url}"
+    if url.endswith("/ws"):
+        url = url[:-3]
+    return url.rstrip("/")
+
+
+def _candidate_base_urls() -> List[str]:
+    candidates: List[str] = []
+    seen = set()
+
+    env_keys = [
+        "OPENENV_BASE_URL",
+        "OPENENV_URL",
+        "BASE_URL",
+        "SERVER_URL",
+    ]
+    for key in env_keys:
+        value = os.getenv(key, "")
+        if value:
+            normalized = _normalize_base_url(value)
+            if normalized and normalized not in seen:
+                seen.add(normalized)
+                candidates.append(normalized)
+
+    port_values: List[int] = []
+    for key in ("OPENENV_PORT", "PORT"):
+        value = os.getenv(key, "").strip()
+        if value.isdigit():
+            port_values.append(int(value))
+    port_values.extend(DEFAULT_PORT_CANDIDATES)
+
+    for port in port_values:
+        for host in ("127.0.0.1", "localhost"):
+            url = f"http://{host}:{port}"
+            if url not in seen:
+                seen.add(url)
+                candidates.append(url)
+
+    return candidates
+
+
+def resolve_env_url(tasks: Sequence[str]) -> Optional[str]:
+    attempted: List[str] = []
+    probe_task = tasks[0] if tasks else "easy_picking"
+
+    for candidate in _candidate_base_urls():
+        attempted.append(candidate)
+        try:
+            client = WarehouseEnv(base_url=candidate, connect_timeout_s=2.0).sync()
+            with client:
+                client.reset(task_name=probe_task)
+            print(f"[INFO] Connected to environment at: {candidate}")
+            return candidate
+        except Exception as exc:
+            print(f"[WARN] Could not reach {candidate}: {exc}")
+
+    print("[ERROR] Unable to connect to environment. Attempted URLs:")
+    for candidate in attempted:
+        print(f"[ERROR]  - {candidate}")
+    return None
+
+
+def _neighbors(pos: Position, grid_size: Position, obstacles: Iterable[Position]) -> Iterable[Tuple[Position, int]]:
+    blocked = set(obstacles)
+    width, height = grid_size
+    for action_id, (dx, dy) in MOVE_DELTAS.items():
+        nx = pos[0] + dx
+        ny = pos[1] + dy
+        nxt = (nx, ny)
+        if 0 <= nx < width and 0 <= ny < height and nxt not in blocked:
+            yield nxt, action_id
+
+
+def shortest_path(start: Position, goal: Position, grid_size: Position, obstacles: Sequence[Position]) -> Optional[List[int]]:
+    if start == goal:
+        return []
+
+    queue = deque([start])
+    parents: Dict[Position, Tuple[Optional[Position], Optional[int]]] = {
+        start: (None, None)
+    }
+
+    while queue:
+        current = queue.popleft()
+        for nxt, action_id in _neighbors(current, grid_size, obstacles):
+            if nxt in parents:
+                continue
+            parents[nxt] = (current, action_id)
+            if nxt == goal:
+                path: List[int] = []
+                cursor = goal
+                while True:
+                    prev, move = parents[cursor]
+                    if prev is None or move is None:
+                        break
+                    path.append(move)
+                    cursor = prev
+                path.reverse()
+                return path
+            queue.append(nxt)
+
+    return None
+
+
+def build_pick_plan(start: Position, items: Sequence[Position], grid_size: Position, obstacles: Sequence[Position]) -> List[int]:
+    remaining_items = list(items)
+    if not remaining_items:
+        return []
+
+    points = [start, *remaining_items]
+    pair_paths: Dict[Tuple[int, int], List[int]] = {}
+    pair_costs: Dict[Tuple[int, int], int] = {}
+
+    for i, src in enumerate(points):
+        for j, dst in enumerate(points):
+            if i == j:
+                pair_paths[(i, j)] = []
+                pair_costs[(i, j)] = 0
+                continue
+            path = shortest_path(src, dst, grid_size, obstacles)
+            if path is None:
+                raise RuntimeError(f"No valid path between {src} and {dst}")
+            pair_paths[(i, j)] = path
+            pair_costs[(i, j)] = len(path)
+
+    item_count = len(remaining_items)
+    full_mask = (1 << item_count) - 1
+    dp: Dict[Tuple[int, int], int] = {}
+    parent: Dict[Tuple[int, int], Optional[Tuple[int, int]]] = {}
+
+    for item_idx in range(item_count):
+        mask = 1 << item_idx
+        dp[(mask, item_idx)] = pair_costs[(0, item_idx + 1)]
+        parent[(mask, item_idx)] = None
+
+    for mask in range(1, full_mask + 1):
+        for last in range(item_count):
+            state = (mask, last)
+            if state not in dp:
+                continue
+            for nxt in range(item_count):
+                if mask & (1 << nxt):
+                    continue
+                next_mask = mask | (1 << nxt)
+                next_cost = dp[state] + pair_costs[(last + 1, nxt + 1)]
+                next_state = (next_mask, nxt)
+                if next_state not in dp or next_cost < dp[next_state]:
+                    dp[next_state] = next_cost
+                    parent[next_state] = state
+
+    best_last = min(
+        range(item_count),
+        key=lambda idx: dp[(full_mask, idx)],
     )
 
-    print(f"[START]")
+    order: List[int] = []
+    state: Optional[Tuple[int, int]] = (full_mask, best_last)
+    while state is not None:
+        mask, last = state
+        order.append(last)
+        state = parent[state]
+    order.reverse()
 
+    plan: List[int] = []
+    current_point_idx = 0
+    for item_idx in order:
+        target_point_idx = item_idx + 1
+        plan.extend(pair_paths[(current_point_idx, target_point_idx)])
+        plan.append(4)
+        current_point_idx = target_point_idx
+
+    return plan
+
+
+def execute_plan(env: WarehouseEnv, task_id: str) -> Tuple[float, int]:
+    result = env.reset(task_name=task_id)
+    obs = result.observation
+    state = env.state()
     step_count = 0
     final_grader_score = 0.0
 
     try:
-        with WarehouseEnv(base_url=env_url).sync() as env:
-            # Pass the task name exactly as defined in openenv.yaml
-            result = env.reset(task_name=task_id)
-            obs = result.observation
-            done = result.done
-            
-            system_prompt = (
-                "You are an automated logistics robot operating in a discrete grid. "
-                "Your valid actions are purely integer digits: 0 (Up), 1 (Down), 2 (Left), 3 (Right), 4 (Pick). "
-                "Output ONLY one of these single digits representing your next move."
-            )
+        plan = build_pick_plan(
+            start=obs.robot_pos,
+            items=obs.items_left,
+            grid_size=state.grid_size,
+            obstacles=obs.obstacles,
+        )
+    except Exception as exc:
+        print(f"[ERROR] Failed to build plan for task {task_id}: {exc}")
+        return final_grader_score, step_count
 
-            while not done and step_count < 200:
-                prompt = (
-                    f"You are navigating. Your pos: {obs.robot_pos}.\n"
-                    f"Inventory size: {obs.inventory}. Items left at: {obs.items_left}.\n"
-                    f"Obstacles are at: {obs.obstacles}.\n"
-                    f"Previous message: {obs.message}\n"
-                    f"Action?"
-                )
-                
-                try:
-                    response = client.chat.completions.create(
-                        model=MODEL_NAME,
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": prompt}
-                        ],
-                        temperature=0.0
-                    )
-                    txt = response.choices[0].message.content.strip()
-                    action_str = ''.join(filter(str.isdigit, txt))
-                    action_id = int(action_str[0]) if action_str else 0
-                except Exception as e:
-                    # print(f"LLM Error: {e}")
-                    action_id = 0 # Dummy default if LLM fails (e.g. rate limit)
-                    
-                try:
-                    result = env.step(WarehouseAction(action_id=action_id))
-                    obs = result.observation
-                    done = result.done
-                    # OpenEnv requires we accumulate the reward from the env.
-                    # Our environment now outputs 0.0 during steps, and the final 0.0-1.0 grader score upon completion.
-                    reward_step = result.reward or 0.0
-                    step_count += 1
-                    
-                    log_entry = {
-                        "step": step_count,
-                        "action": action_id,
-                        "reward": reward_step,
-                        "done": done,
-                        "robot_pos": list(obs.robot_pos),
-                        "inventory": obs.inventory,
-                        "message": obs.message,
-                    }
-                    print(f"[STEP] {json.dumps(log_entry)}")
-                    
-                    if done:
-                        total_items = obs.inventory + len(obs.items_left)
-                        final_grader_score = float(obs.inventory) / float(total_items) if total_items > 0 else 0.0
-                        break
-                except Exception as e:
-                    print(f"[ERROR] Step error: {e}")
-                    break
-    except Exception as e:
-        print(f"[ERROR] Environment connection or execution error: {e}")
+    for action_id in plan:
+        try:
+            result = env.step(WarehouseAction(action_id=action_id))
+        except Exception as exc:
+            print(f"[ERROR] Step error in task {task_id}: {exc}")
+            break
+
+        obs = result.observation
+        step_count += 1
+
+        log_entry = {
+            "step": step_count,
+            "action": action_id,
+            "reward": result.reward or 0.0,
+            "done": result.done,
+            "robot_pos": list(obs.robot_pos),
+            "inventory": obs.inventory,
+            "message": obs.message,
+        }
+        print(f"[STEP] {json.dumps(log_entry)}")
+
+        if result.done:
+            total_items = obs.inventory + len(obs.items_left)
+            final_grader_score = (
+                float(obs.inventory) / float(total_items) if total_items > 0 else 1.0
+            )
+            break
+
+    if not result.done:
+        print(f"[WARN] Task {task_id} ended without completion after {step_count} steps.")
+
+    return final_grader_score, step_count
+
+
+def run_task(task_id: str, env_url: str) -> None:
+    print("[START]")
+    final_grader_score = 0.0
+    step_count = 0
+
+    try:
+        client = WarehouseEnv(base_url=env_url, connect_timeout_s=5.0).sync()
+        with client:
+            final_grader_score, step_count = execute_plan(client, task_id)
+    except Exception as exc:
+        print(f"[ERROR] Environment connection or execution error in {task_id}: {exc}")
 
     print(f"[END] Final Score: {final_grader_score:.4f}, Steps taken: {step_count}\n")
 
-def run_inference():
-    # Environment URL defaults
-    env_url = os.getenv("OPENENV_BASE_URL", "ws://127.0.0.1:8000")
-    env_url = env_url.replace("http://", "ws://").replace("https://", "wss://")
+
+def run_inference() -> None:
+    tasks = DEFAULT_TASKS
+    env_url = resolve_env_url(tasks)
+    if not env_url:
+        return
+
     print(f"[INFO] Using environment URL: {env_url}")
-    
-    # Run the exact 3 tasks defined in our openenv.yaml
-    tasks = ["easy_picking", "medium_picking", "hard_picking"]
-    for idx, t in enumerate(tasks):
-        print(f"--- Running Task {idx+1}/3: {t} ---")
+    for idx, task_id in enumerate(tasks, start=1):
+        print(f"--- Running Task {idx}/{len(tasks)}: {task_id} ---")
         try:
-            run_task(t, env_url)
-        except Exception as e:
-            print(f"[ERROR] Unhandled exception in task {t}: {e}")
+            run_task(task_id, env_url)
+        except Exception as exc:
+            print(f"[ERROR] Unhandled exception in task {task_id}: {exc}")
+
 
 if __name__ == "__main__":
     try:
         run_inference()
-    except Exception as e:
-        print(f"[FATAL] run_inference crashed: {e}")
+    except Exception as exc:
+        print(f"[FATAL] run_inference crashed: {exc}")
