@@ -76,6 +76,24 @@ def emit_end(task_id: str, score: float, steps: int, status: str) -> None:
     )
 
 
+def emit_setup_failure(task_id: str, reason: str) -> None:
+    emit_start(task_id)
+    print(
+        "[STEP] "
+        f"task={task_id} "
+        "step=0 "
+        "action=-1 "
+        "reward=0.0000 "
+        "done=false "
+        "x=0 "
+        "y=0 "
+        "inventory=0 "
+        f"status={reason}",
+        flush=True,
+    )
+    emit_end(task_id, 0.0, 0, reason)
+
+
 def resolve_model_name(client: OpenAI) -> str:
     requested_model = os.getenv("MODEL_NAME", "").strip()
     try:
@@ -385,6 +403,8 @@ def run_inference() -> None:
     tasks = DEFAULT_TASKS
     env_url = resolve_env_url(tasks)
     if not env_url:
+        for task_id in tasks:
+            emit_setup_failure(task_id, "env_unavailable")
         return
 
     log_diagnostic(f"[INFO] Using environment URL: {env_url}")
@@ -393,6 +413,8 @@ def run_inference() -> None:
         log_diagnostic(f"[INFO] Using LLM model: {model_name}")
     except Exception as exc:
         log_diagnostic(f"[ERROR] Unable to reach LiteLLM proxy: {exc}")
+        for task_id in tasks:
+            emit_setup_failure(task_id, "llm_unavailable")
         return
 
     for idx, task_id in enumerate(tasks, start=1):
