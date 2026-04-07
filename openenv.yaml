@@ -1,7 +1,7 @@
 name: warehouse_env
 version: 0.1.0
 description: A warehouse logistics environment for LLM agents simulating automated order picking operations.
-entrypoint: warehouse_env.server.app:app
+entrypoint: server.app:app
 type: http
 spec_version: "1.0"
 tasks:
