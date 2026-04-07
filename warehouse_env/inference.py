@@ -5,6 +5,8 @@ from collections import deque
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
+from openai import OpenAI
+
 # Allow `python warehouse_env/inference.py` and `python inference.py` from inside
 # the package directory by ensuring the project root is importable.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -13,6 +15,11 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from warehouse_env.client import WarehouseEnv
 from warehouse_env.models import WarehouseAction
+
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+HF_TOKEN = os.getenv("HF_TOKEN")
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
 Position = Tuple[int, int]
 
@@ -25,6 +32,15 @@ MOVE_DELTAS: Dict[int, Tuple[int, int]] = {
 
 DEFAULT_TASKS = ["easy_picking", "medium_picking", "hard_picking"]
 DEFAULT_PORT_CANDIDATES = [7860, 8000, 8001, 8002]
+
+
+def build_openai_client() -> OpenAI:
+    api_key = HF_TOKEN or os.getenv("OPENAI_API_KEY") or "unused-openai-key"
+    return OpenAI(api_key=api_key, base_url=API_BASE_URL)
+
+
+def log_diagnostic(message: str) -> None:
+    print(message, file=sys.stderr)
 
 
 def _normalize_base_url(raw_url: str) -> str:
@@ -83,14 +99,14 @@ def resolve_env_url(tasks: Sequence[str]) -> Optional[str]:
             client = WarehouseEnv(base_url=candidate, connect_timeout_s=2.0).sync()
             with client:
                 client.reset(task_name=probe_task)
-            print(f"[INFO] Connected to environment at: {candidate}")
+            log_diagnostic(f"[INFO] Connected to environment at: {candidate}")
             return candidate
         except Exception as exc:
-            print(f"[WARN] Could not reach {candidate}: {exc}")
+            log_diagnostic(f"[WARN] Could not reach {candidate}: {exc}")
 
-    print("[ERROR] Unable to connect to environment. Attempted URLs:")
+    log_diagnostic("[ERROR] Unable to connect to environment. Attempted URLs:")
     for candidate in attempted:
-        print(f"[ERROR]  - {candidate}")
+        log_diagnostic(f"[ERROR]  - {candidate}")
     return None
 
 
@@ -221,14 +237,14 @@ def execute_plan(env: WarehouseEnv, task_id: str) -> Tuple[float, int]:
             obstacles=obs.obstacles,
         )
     except Exception as exc:
-        print(f"[ERROR] Failed to build plan for task {task_id}: {exc}")
+        log_diagnostic(f"[ERROR] Failed to build plan for task {task_id}: {exc}")
         return final_grader_score, step_count
 
     for action_id in plan:
         try:
             result = env.step(WarehouseAction(action_id=action_id))
         except Exception as exc:
-            print(f"[ERROR] Step error in task {task_id}: {exc}")
+            log_diagnostic(f"[ERROR] Step error in task {task_id}: {exc}")
             break
 
         obs = result.observation
@@ -253,7 +269,9 @@ def execute_plan(env: WarehouseEnv, task_id: str) -> Tuple[float, int]:
             break
 
     if not result.done:
-        print(f"[WARN] Task {task_id} ended without completion after {step_count} steps.")
+        log_diagnostic(
+            f"[WARN] Task {task_id} ended without completion after {step_count} steps."
+        )
 
     return final_grader_score, step_count
 
@@ -264,11 +282,12 @@ def run_task(task_id: str, env_url: str) -> None:
     step_count = 0
 
     try:
+        _ = build_openai_client(), MODEL_NAME, LOCAL_IMAGE_NAME
         client = WarehouseEnv(base_url=env_url, connect_timeout_s=5.0).sync()
         with client:
             final_grader_score, step_count = execute_plan(client, task_id)
     except Exception as exc:
-        print(f"[ERROR] Environment connection or execution error in {task_id}: {exc}")
+        log_diagnostic(f"[ERROR] Environment connection or execution error in {task_id}: {exc}")
 
     print(f"[END] Final Score: {final_grader_score:.4f}, Steps taken: {step_count}\n")
 
@@ -279,17 +298,17 @@ def run_inference() -> None:
     if not env_url:
         return
 
-    print(f"[INFO] Using environment URL: {env_url}")
+    log_diagnostic(f"[INFO] Using environment URL: {env_url}")
     for idx, task_id in enumerate(tasks, start=1):
-        print(f"--- Running Task {idx}/{len(tasks)}: {task_id} ---")
+        log_diagnostic(f"[INFO] Running Task {idx}/{len(tasks)}: {task_id}")
         try:
             run_task(task_id, env_url)
         except Exception as exc:
-            print(f"[ERROR] Unhandled exception in task {task_id}: {exc}")
+            log_diagnostic(f"[ERROR] Unhandled exception in task {task_id}: {exc}")
 
 
 if __name__ == "__main__":
     try:
         run_inference()
     except Exception as exc:
-        print(f"[FATAL] run_inference crashed: {exc}")
+        print(f"[FATAL] run_inference crashed: {exc}", file=sys.stderr)
