@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 from collections import deque
@@ -41,6 +40,40 @@ def build_openai_client() -> OpenAI:
 
 def log_diagnostic(message: str) -> None:
     print(message, file=sys.stderr)
+
+
+def emit_start(task_id: str) -> None:
+    print(f"[START] task={task_id}", flush=True)
+
+
+def emit_step(
+    task_id: str,
+    step_count: int,
+    action_id: int,
+    reward: float,
+    done: bool,
+    robot_pos: Position,
+    inventory: int,
+) -> None:
+    print(
+        "[STEP] "
+        f"task={task_id} "
+        f"step={step_count} "
+        f"action={action_id} "
+        f"reward={reward:.4f} "
+        f"done={str(done).lower()} "
+        f"x={robot_pos[0]} "
+        f"y={robot_pos[1]} "
+        f"inventory={inventory}",
+        flush=True,
+    )
+
+
+def emit_end(task_id: str, score: float, steps: int, status: str) -> None:
+    print(
+        f"[END] task={task_id} score={score:.4f} steps={steps} status={status}",
+        flush=True,
+    )
 
 
 def resolve_model_name(client: OpenAI) -> str:
@@ -303,16 +336,15 @@ def execute_plan(env: WarehouseEnv, task_id: str) -> Tuple[float, int]:
         obs = result.observation
         step_count += 1
 
-        log_entry = {
-            "step": step_count,
-            "action": action_id,
-            "reward": result.reward or 0.0,
-            "done": result.done,
-            "robot_pos": list(obs.robot_pos),
-            "inventory": obs.inventory,
-            "message": obs.message,
-        }
-        print(f"[STEP] {json.dumps(log_entry)}")
+        emit_step(
+            task_id=task_id,
+            step_count=step_count,
+            action_id=action_id,
+            reward=result.reward or 0.0,
+            done=bool(result.done),
+            robot_pos=obs.robot_pos,
+            inventory=obs.inventory,
+        )
 
         if result.done:
             total_items = obs.inventory + len(obs.items_left)
@@ -330,18 +362,23 @@ def execute_plan(env: WarehouseEnv, task_id: str) -> Tuple[float, int]:
 
 
 def run_task(task_id: str, env_url: str) -> None:
-    print("[START]")
+    emit_start(task_id)
     final_grader_score = 0.0
     step_count = 0
+    status = "completed"
 
     try:
         client = WarehouseEnv(base_url=env_url, connect_timeout_s=5.0).sync()
         with client:
             final_grader_score, step_count = execute_plan(client, task_id)
     except Exception as exc:
+        status = "error"
         log_diagnostic(f"[ERROR] Environment connection or execution error in {task_id}: {exc}")
+    else:
+        if final_grader_score < 1.0:
+            status = "incomplete"
 
-    print(f"[END] Final Score: {final_grader_score:.4f}, Steps taken: {step_count}\n")
+    emit_end(task_id, final_grader_score, step_count, status)
 
 
 def run_inference() -> None:
