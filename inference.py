@@ -31,9 +31,9 @@ MAX_SCORE = 0.9999
 
 
 def build_openai_client() -> OpenAI:
-    api_key = API_KEY or HF_TOKEN
+    api_key = HF_TOKEN or API_KEY
     if not api_key:
-        raise RuntimeError("Missing required API_KEY or HF_TOKEN environment variable.")
+        raise RuntimeError("Missing required HF_TOKEN or API_KEY environment variable.")
     return OpenAI(api_key=api_key, base_url=API_BASE_URL)
 
 
@@ -53,12 +53,7 @@ def emit_step(
     done: bool,
 ) -> None:
     print(
-        "[STEP] "
-        f"task={task_id} "
-        f"step={step_count} "
-        f"reward={reward:.4f} "
-        f"action={action_id} "
-        f"done={str(done).lower()}",
+        f"[STEP] task={task_id} step={step_count} reward={reward:.4f}",
         flush=True,
     )
 
@@ -66,15 +61,16 @@ def emit_step(
 def emit_end(task_id: str, score: float, steps: int, status: str) -> None:
     bounded_score = min(MAX_SCORE, max(MIN_SCORE, score))
     print(
-        f"[END] task={task_id} score={bounded_score:.4f} steps={steps} status={status}",
+        f"[END] task={task_id} score={bounded_score:.4f} steps={steps}",
         flush=True,
     )
 
 
 def emit_setup_failure(task_id: str, reason: str) -> None:
     emit_start(task_id)
-    emit_step(task_id=task_id, step_count=0, reward=0.0, action_id=-1, done=False)
-    emit_end(task_id, 0.0, 0, reason)
+    log_diagnostic(f"[WARN] Task {task_id} setup fallback: {reason}")
+    emit_step(task_id=task_id, step_count=1, reward=MIN_SCORE, action_id=-1, done=False)
+    emit_end(task_id, MIN_SCORE, 1, reason)
 
 
 def resolve_model_name(client: OpenAI) -> str:
