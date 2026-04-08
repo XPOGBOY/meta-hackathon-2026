@@ -26,6 +26,8 @@ MOVE_DELTAS: Dict[int, Tuple[int, int]] = {
 
 DEFAULT_TASKS = ["easy_picking", "medium_picking", "hard_picking"]
 DEFAULT_PORT_CANDIDATES = [7860, 8000, 8001, 8002]
+MIN_SCORE = 0.0001
+MAX_SCORE = 0.9999
 
 
 def build_openai_client() -> OpenAI:
@@ -62,8 +64,9 @@ def emit_step(
 
 
 def emit_end(task_id: str, score: float, steps: int, status: str) -> None:
+    bounded_score = min(MAX_SCORE, max(MIN_SCORE, score))
     print(
-        f"[END] task={task_id} score={score:.4f} steps={steps} status={status}",
+        f"[END] task={task_id} score={bounded_score:.4f} steps={steps} status={status}",
         flush=True,
     )
 
