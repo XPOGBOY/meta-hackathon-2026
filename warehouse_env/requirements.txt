@@ -5,3 +5,5 @@ pydantic
 python-multipart
 websockets
 openai
+numpy
+torch

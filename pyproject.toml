@@ -16,13 +16,15 @@ dependencies = [
     "python-multipart",
     "websockets",
     "openai",
+    "numpy",
+    "torch",
 ]
 
 [project.scripts]
-server = "server.app:main"
+server = "warehouse_env.server.app:main"
 
 [project.optional-dependencies]
 dev = ["pytest"]
 
 [tool.setuptools.packages.find]
-include = ["warehouse_env*", "server*"]
+include = ["warehouse_env*"]

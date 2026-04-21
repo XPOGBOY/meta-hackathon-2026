@@ -1,16 +1,20 @@
+# Canonical copy lives in warehouse_env/openenv.yaml.
 name: warehouse_env
-version: 0.1.0
-description: A warehouse logistics environment for LLM agents simulating automated order picking operations.
-entrypoint: server.app:app
+version: 0.2.0
+description: Adaptive warehouse order fulfillment with natural-language instructions, deadlines, and self-improving planning.
+entrypoint: warehouse_env.server.app:app
 type: http
 spec_version: "1.0"
 tasks:
-  - id: easy_picking
-    name: "Easy Picking Task"
-    description: "Navigate a small 5x5 warehouse area with minimal obstacles to pick up 2 items."
-  - id: medium_picking
-    name: "Medium Picking Task"
-    description: "Navigate a standard 10x10 warehouse area with obstacles to pick up 5 items."
-  - id: hard_picking
-    name: "Hard Picking Task"
-    description: "Navigate a larger 15x15 warehouse zone with many complex obstacles to pick up 10 items."
+  - id: simple_order
+    name: "Simple Order"
+    description: "One short natural-language order with two items, no dependencies, and a small 5x5 grid."
+  - id: multi_step_order
+    name: "Multi-Step Order"
+    description: "A single multi-phase order with four items, dependencies, priorities, and delivery constraints."
+  - id: order_queue
+    name: "Order Queue"
+    description: "Three sequential orders on a medium grid, requiring repeated plan-decompose-deliver cycles."
+  - id: adaptive_fulfillment
+    name: "Adaptive Fulfillment"
+    description: "Five orders with dynamic arrivals, deadlines, dependencies, and occasional stock shortages on a 15x15 grid."

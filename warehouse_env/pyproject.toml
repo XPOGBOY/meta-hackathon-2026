@@ -15,7 +15,9 @@ dependencies = [
     "pydantic",
     "python-multipart",
     "websockets",
-    "openai"
+    "openai",
+    "numpy",
+    "torch"
 ]
 
 [project.scripts]
