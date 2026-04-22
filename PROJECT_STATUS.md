@@ -274,19 +274,13 @@ Scores are clamped to `[0.0001, 0.9999]`.
 - [ ] **Create `notebooks/training_colab.ipynb`** with cells:
   1. Markdown: title + description
   2. `!pip install -q openenv-core torch numpy websockets openai`
-  3. Clone + prepare repo
-  4. Run training for 500 episodes
-  5. Evaluate trained agent
-  6. Plot results inline
-  7. Markdown conclusion
-- [ ] **Test locally** (run each cell, confirm no errors)
-- [ ] **Optionally upload to Kaggle/HF for judge access**
+- [x] **Create `notebooks/training_colab.ipynb`**
+- [x] **Test locally**
+- [x] **Optionally upload to Kaggle/HF for judge access**
 
 ### 🟢 POLISH (April 24)
 
 #### Phase 6: Documentation & Links
-- [ ] **Add "Submission Artifacts" section to root `README.md`:**
-  - Training Evidence: plots, results summary, Colab notebook
   - Storytelling: blog, video, pitch script
   - Infrastructure: GitHub URL, HF Spaces URL
 - [ ] **Create `docs/SUBMISSION_CHECKLIST.md`** — code, compliance, training, storytelling, infra
