@@ -1,5 +1,14 @@
 # Adaptive Warehouse Order Fulfillment with Natural Language Instructions and Self-Improving Planning
 
+## Submission Context
+
+This project is Arjun Madhava's submission for the Meta PyTorch OpenEnv Hackathon 2026 Grand Finale, held April 25-26 at Scaler School of Technology in Bangalore. The hackathon is organized by Meta, PyTorch, Scaler, and Hugging Face, and the work is built around the OpenEnv framework for reinforcement learning environments.
+
+The project evolved from a completed Round 1 warehouse logistics environment into a Round 2 finale submission. The Round 2 design intentionally focuses on:
+
+- Long-Horizon Planning & Instruction Following as the primary theme
+- Self-Improving Agent Systems as the secondary theme
+
 ## 1. Problem Statement
 
 This project models a warehouse AI agent that receives multi-step fulfillment orders in natural language and must convert them into reliable, efficient action sequences. The agent must parse instructions, plan routes that respect item priorities, dependencies, fragile-handling constraints, and deadlines, execute those plans in a grid-based warehouse, and improve over time by using episode history to refine future decisions.
@@ -12,7 +21,7 @@ Each episode includes:
 
 - Natural-language order instructions
 - Item lists with positions, priorities, and fragile flags
-- Dependency constraints such as “pick foam insert before fragile sensor”
+- Dependency constraints such as "pick foam insert before fragile sensor"
 - Delivery targets
 - Optional deadlines
 
@@ -42,6 +51,7 @@ The agent supports the following capabilities:
 - BFS pathfinding for shortest-path movement
 - TSP-style ordering for efficient pickup sequencing
 - Priority-aware execution for urgent and high-value items
+- Queue ranking for multi-order tasks
 - Self-improvement through episode memory, performance tracking, and LLM-generated strategy hints
 
 ## 4. Tasks
@@ -89,6 +99,7 @@ Per-step components:
 - Wrong delivery: `-0.3`
 - Order completion: `+0.5`
 - Deadline bonus: proportional to remaining slack
+- Fragile-risk penalty when fragile items are picked too early
 - Efficiency penalty: `-0.001` per step
 
 Episode-level score:

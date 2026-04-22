@@ -17,3 +17,10 @@ tasks:
   - id: adaptive_fulfillment
     name: "Adaptive Fulfillment"
     description: "Five orders with dynamic arrivals, deadlines, dependencies, and occasional stock shortages on a 15x15 grid."
+  - id: multi_robot_coordination
+    name: "Multi-Robot Order Dispatch"
+    description: "Two robots coordinate concurrently to fulfill a shared order queue on a shared grid, avoiding collisions and dividing work efficiently."
+    features:
+      - "multi_agent_coordination"
+      - "collision_avoidance"
+      - "shared_order_queue"

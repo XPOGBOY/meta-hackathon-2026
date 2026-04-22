@@ -1,0 +1,29 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Model and checkpoint files
+*.pth
+*.pt
+warehouse_model.pth
+
+# Logs
+*.log
+*log*.txt
+
+# Pytest
+.pytest_cache/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.egg-info/

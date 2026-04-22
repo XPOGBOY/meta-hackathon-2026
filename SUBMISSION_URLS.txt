@@ -1,0 +1,81 @@
+SUBMISSION URLS — Arjun Madhava
+Meta PyTorch OpenEnv Hackathon 2026 Grand Finale
+April 25-26, Scaler School of Technology, Bangalore
+
+================================================================
+PRIMARY SUBMISSION
+================================================================
+
+GitHub Repository:
+  https://github.com/XPOGBOY/meta-hackathon-2026
+  [UPDATE THIS BEFORE SUBMISSION DAY]
+
+Hugging Face Spaces (live demo):
+  https://huggingface.co/spaces/XPOGBOY/meta-hackathon-2026
+  [UPDATE THIS BEFORE SUBMISSION DAY]
+
+================================================================
+TRAINING EVIDENCE (local — in this repo)
+================================================================
+
+Reward Curve:     docs/plots/training_reward.png
+Loss Curve:       docs/plots/training_loss.png
+Metrics JSON:     docs/plots/metrics.json
+Results Summary:  results/TRAINING_SUMMARY.md
+Colab Notebook:   notebooks/training_colab.ipynb
+
+================================================================
+STORYTELLING
+================================================================
+
+Blog Post (local): docs/BLOG_POST.md
+Blog Post (published):
+  [ADD URL AFTER PUBLISHING — Medium / HuggingFace]
+
+YouTube Demo Video:
+  [ADD URL AFTER UPLOADING]
+  Format: unlisted, <2 minutes, 1080p MP4
+
+Pitch Script: docs/PITCH_SCRIPT.md
+
+================================================================
+MULTI-AGENT COORDINATION
+================================================================
+
+Implementation: warehouse_env/server/multi_robot_environment.py
+Demo Notebook:  notebooks/multi_robot_demo.ipynb
+Task ID:        multi_robot_coordination (in openenv.yaml)
+
+================================================================
+JUDGE-FACING DOCUMENTS
+================================================================
+
+Problem Statement: docs/problem_statement.md
+Submission Checklist: docs/SUBMISSION_CHECKLIST.md
+Project Status:    PROJECT_STATUS.md
+
+================================================================
+EMERGENCY BACKUP
+================================================================
+
+Local server start:
+  python -m uvicorn warehouse_env.server.app:app --host 0.0.0.0 --port 7860
+
+Run inference:
+  python inference.py
+
+Run tests:
+  python -m pytest tests/ -v
+
+Multi-robot quick test:
+  python -c "from warehouse_env.client import reset_multi_robot; env, obs = reset_multi_robot(); print('OK')"
+
+================================================================
+NOTES
+================================================================
+
+- Fill in [UPDATE THIS] fields before submission day morning
+- Print this file and bring 3 physical copies to the event
+- Have this file open on your phone as backup
+
+Last updated: April 22, 2026

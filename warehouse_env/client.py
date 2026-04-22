@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 from openenv.core.client_types import StepResult
 from openenv.core.env_client import EnvClient
@@ -142,3 +142,48 @@ class WarehouseEnv(EnvClient[WarehouseAction, WarehouseObservation, WarehouseGam
             deadlines_met=int(payload.get("deadlines_met", 0)),
             total_orders_expected=int(payload.get("total_orders_expected", 0)),
         )
+
+
+# ---------------------------------------------------------------------------
+# Multi-robot convenience helpers (local — no server required)
+# ---------------------------------------------------------------------------
+
+def reset_multi_robot(
+    task_name: str = "simple_order",
+    num_robots: int = 2,
+) -> Tuple[Any, Dict[str, WarehouseObservation]]:
+    """Instantiate and reset a :class:`MultiRobotWarehouse`, returning
+    ``(env, observations_dict)``.
+
+    Example::
+
+        env, obs = reset_multi_robot("simple_order")
+        env, obs, reward, done = step_multi_robot(env, {"R1": 3, "R2": 0})
+    """
+    from warehouse_env.server.multi_robot_environment import MultiRobotWarehouse  # local import
+
+    env = MultiRobotWarehouse(num_robots=num_robots)
+    obs = env.reset(task_name=task_name)
+    return env, obs
+
+
+def step_multi_robot(
+    env: Any,
+    actions: Dict[str, int],
+) -> Tuple[Any, Dict[str, WarehouseObservation], float, bool]:
+    """Execute one step in *env* with the given per-robot *actions*.
+
+    Parameters
+    ----------
+    env:
+        A ``MultiRobotWarehouse`` instance (returned by :func:`reset_multi_robot`).
+    actions:
+        Mapping of ``robot_id → action_id`` (0 = up, 1 = down, 2 = left,
+        3 = right, 4 = pick, 5 = deliver).
+
+    Returns
+    -------
+    env, observations, reward, done
+    """
+    obs, reward, done = env.step(actions)
+    return env, obs, reward, done

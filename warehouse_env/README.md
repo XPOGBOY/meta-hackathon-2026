@@ -9,13 +9,30 @@ pinned: false
 
 # Adaptive Warehouse Order Fulfillment
 
-This project is my Round 2 OpenEnv environment for the Meta PyTorch OpenEnv Hackathon 2026. The core idea is simple to explain but surprisingly tricky to build well: give a warehouse agent messy natural-language fulfillment orders, then make it turn those instructions into valid, efficient actions while priorities, dependencies, deadlines, and new orders keep showing up.
+This project is Arjun Madhava's Round 2 OpenEnv environment for the Meta PyTorch OpenEnv Hackathon 2026 Grand Finale, held April 25-26 at Scaler School of Technology in Bangalore. The environment is built for the OpenEnv framework and is designed around the two themes that best matched the original warehouse project:
 
-What made this fun is that no single technique was enough on its own. Pure route optimization is great once the task is structured, but it does not help when the instruction says something like “prioritize electronics, pick the fragile sensor after the foam insert, and deliver everything to staging area 2 before the urgent order expires.” That pushed the design toward a hybrid stack: LLM-assisted parsing up front, graph/path planning in the middle, and an RL training path for longer-term policy improvement.
+- Long-Horizon Planning & Instruction Following as the primary theme
+- Self-Improving Agent Systems as the secondary theme
+
+The hackathon is organized by Meta, PyTorch, Scaler, and Hugging Face. That context matters because this repo is not just a random warehouse simulator anymore; it is a deliberate extension of a working Round 1 OpenEnv submission into a more judge-facing Round 2 system with natural-language order fulfillment and an explicit self-improvement loop.
 
 ## Problem Statement
 
 An AI warehouse agent operates in a grid-based fulfillment center and receives multi-step orders written in natural language. It must parse those instructions into structured sub-tasks, plan an efficient route that respects priorities, dependencies, fragile-item handling, and delivery deadlines, then improve its future decisions by learning from recent episode outcomes.
+
+## Round 1 To Round 2
+
+Round 1 was a cleaner warehouse routing problem: navigate the grid, avoid obstacles, and collect items efficiently. That version already had:
+
+- OpenEnv-compatible environment/server wiring
+- Docker plus Hugging Face Spaces deployment
+- BFS shortest-path planning
+- TSP-based pickup ordering
+- A PyTorch DQN training path
+
+For the finale, I kept that foundation and changed the actual challenge. The agent now has to understand instructions, sequence work across fulfillment phases, rank queued work, handle deadlines and stock issues, and adapt from recent failures instead of solving one static pickup puzzle.
+
+I skipped Multi-Agent Interactions because rewriting the environment for multiple robots as a solo builder in four days felt too risky. I also chose not to make World Modeling the centerpiece, even though some of its ideas still show up conceptually through changing queues, deadlines, and dynamic episode conditions.
 
 ## Architecture
 
@@ -34,7 +51,7 @@ flowchart LR
 ## What The System Does
 
 - Receives complex warehouse orders as natural-language instructions.
-- Uses an LLM through a LiteLLM/OpenAI-compatible proxy to parse instructions into structured plans, with a heuristic fallback when the proxy is unavailable.
+- Uses an LLM through a LiteLLM or OpenAI-compatible proxy to parse instructions into structured plans, with a heuristic fallback when the proxy is unavailable.
 - Plans routes with BFS shortest paths and a small TSP-style ordering pass, while also respecting dependency and priority constraints.
 - Supports four task tiers that scale from a single simple order to dynamic multi-order fulfillment.
 - Tracks episode memory, failure patterns, and average performance so later tasks can benefit from earlier runs.
@@ -52,8 +69,8 @@ flowchart LR
 ## Key Features
 
 - Natural-language order instructions that describe what to pick, in what spirit to prioritize it, and where to deliver it.
-- Delivery zones at the warehouse edge instead of “pick everything and stop.”
-- Explicit item dependencies such as “pick foam insert before fragile sensor.”
+- Delivery zones at the warehouse edge instead of "pick everything and stop."
+- Explicit item dependencies such as "pick foam insert before fragile sensor."
 - Fragile items that are safer to pick after supporting items are already secured.
 - Optional out-of-stock handling so the agent must recover gracefully rather than just fail hard.
 - Dynamic order arrivals in the hardest tier, which forces re-planning under pressure.
@@ -67,6 +84,7 @@ The reward model is fully algorithmic. I wanted the grading logic to stay inspec
 - Delivering to the correct staging zone gives `+0.3`; the wrong zone gives `-0.3`.
 - Completing an order gives `+0.5`.
 - Finishing before the deadline adds a slack-based bonus.
+- Picking a fragile item too early adds a small risk penalty.
 - Every step costs `-0.001` to keep the planner honest.
 
 The final episode score is bounded to `0.0001..0.9999` and combines:
@@ -78,7 +96,7 @@ The final episode score is bounded to `0.0001..0.9999` and combines:
 
 ## Self-Improvement Loop
 
-The project leans into the hackathon’s self-improving-agent angle without pretending the agent is doing full autonomous research.
+The project leans into the hackathon's self-improving-agent angle without pretending the agent is doing full autonomous research.
 
 - Episode memory stores the latest runs with scores, steps, completion rate, and failure reasons.
 - Performance tracking summarizes whether the agent is getting faster or simply making the same mistakes more consistently.
