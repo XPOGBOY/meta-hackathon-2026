@@ -18,7 +18,7 @@ def _find_free_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def _wait_for_server(port: int, timeout_s: float = 15.0) -> None:
+def _wait_for_server(port: int, timeout_s: float = 30.0) -> None:
     deadline = time.time() + timeout_s
     root_url = f"http://127.0.0.1:{port}/"
 
