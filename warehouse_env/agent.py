@@ -12,7 +12,8 @@ import torch.optim as optim
 from warehouse_env.models import OrderItem, WarehouseObservation
 
 MAX_VISIBLE_ITEMS = 6
-STATE_DIM = 2 + 2 + 1 + 1 + 2 + 3 + (MAX_VISIBLE_ITEMS * 5)
+# state = robot_pos(2) + delivery_anchor(2) + inventory(1) + queue_size(1) + deadline(1) + items_completed(1) + items_total(1) + visible_items(30)
+STATE_DIM = 2 + 2 + 1 + 1 + 1 + 1 + 1 + (MAX_VISIBLE_ITEMS * 5)
 ACTION_DIM = 6
 
 HIDDEN1 = 128
