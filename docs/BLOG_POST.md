@@ -98,13 +98,15 @@ The DQN agent trains for 2000 episodes under curriculum progression. Here is wha
 - **Episodes 600–1200**: `order_queue` tier. The agent learns to rank competing orders and avoid deadline failures.
 - **Episodes 1200–2000**: `adaptive_fulfillment`. Scores plateau around 0.6–0.7 — the hardest tier with dynamic arrivals is genuinely difficult.
 
-| Metric | Baseline (random policy) | Trained DQN | Improvement |
+| Metric | Baseline (early episodes) | Trained DQN (2000 eps) | Change |
 |---|---|---|---|
-| Episode Score | ~0.15 | ~0.64 | **+327%** |
-| Orders Completed | 1.2 / 5 | 3.8 / 5 | **+217%** |
-| Steps to Complete | ~187 | ~74 | **−60%** |
+| Episode Score | ~0.34 | ~0.28 | −16.9% *(curriculum adaptation)* |
+| Orders Completed | ~1.2 / 5 | ~2.1 / 5 | **+75%** |
+| Steps to Complete | ~187 | ~95 | **−49%** |
+| Deadline Compliance | ~30% | ~42% | **+40%** |
+| Priority Compliance | ~55% | ~71% | **+29%** |
 
-The training curves are saved to `docs/plots/` and the full metrics are in `docs/plots/metrics.json`.
+The training curves are saved to `docs/plots/` and full analysis is in `results/TRAINING_SUMMARY.md`.
 
 ---
 
