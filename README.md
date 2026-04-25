@@ -72,7 +72,7 @@ The environment lives in `warehouse_env/server/multi_robot_environment.py` and i
 
 ### Infrastructure
 - GitHub: *(this repo)*
-- HF Spaces: *(link in SUBMISSION_URLS.txt)*
+- HF Spaces: https://huggingface.co/spaces/ArjunMadhava/warehouse-env
 
 ## Local Run
 

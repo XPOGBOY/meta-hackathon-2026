@@ -7,11 +7,11 @@ PRIMARY SUBMISSION
 ================================================================
 
 GitHub Repository:
-  https://github.com/XPOGBOY/meta-hackathon-2026
+  https://github.com/ArjunMadhava/meta-hackathon-2026
   [UPDATE THIS BEFORE SUBMISSION DAY]
 
 Hugging Face Spaces (live demo):
-  https://huggingface.co/spaces/XPOGBOY/meta-hackathon-2026
+  https://huggingface.co/spaces/ArjunMadhava/warehouse-env
   [UPDATE THIS BEFORE SUBMISSION DAY]
 
 ================================================================
