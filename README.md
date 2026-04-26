@@ -1,5 +1,11 @@
-
+---
 title: Meta Hackathon 2026
+emoji: "🏢"
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+---
 
 # Adaptive Warehouse OpenEnv
 
