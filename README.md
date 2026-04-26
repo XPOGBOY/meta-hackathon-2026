@@ -89,6 +89,7 @@ The smoothed reward curve rises above the random-policy baseline as the curricul
 | **DQN Training Colab** | [notebooks/training_colab.ipynb](notebooks/training_colab.ipynb) |
 | **TRL / LLM Fine-Tuning Colab** | [notebooks/llm_trl_finetuning_colab.ipynb](notebooks/llm_trl_finetuning_colab.ipynb) |
 | **Results Summary** | [results/TRAINING_SUMMARY.md](results/TRAINING_SUMMARY.md) |
+| **Pitch Deck** | [meta.pptx](meta.pptx) |
 | **YouTube Demo** | *(add URL after uploading)* |
 
 ## Submission Artifacts
