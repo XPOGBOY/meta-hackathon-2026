@@ -22,7 +22,7 @@ class TestEnvironment:
 
     def test_move_actions(self):
         env = WarehouseEnvironment()
-        env.reset(task_name="simple_order")
+        env.reset(seed=0, task_name="simple_order")
 
         obs = env.step(WarehouseAction(action_id=3))
         assert obs.robot_pos[0] >= 1

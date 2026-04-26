@@ -16,21 +16,21 @@ def test_end_to_end_integration():
     parser = InstructionParser()
     
     # 1. Reset
-    result = env.reset(task_name="simple_order")
-    assert result.observation is not None
-    assert result.observation.current_order is not None
+    observation = env.reset(task_name="simple_order")
+    assert observation is not None
+    assert observation.current_order is not None
     
     # 2. Parse instruction
-    plan = parser.heuristic_parse(result.observation.current_order)
+    plan = parser.heuristic_parse(observation.current_order)
     assert len(plan.ordered_item_names) > 0
     assert plan.delivery_zone_name is not None
     
     # 3. Step in the environment (Dummy step to ensure no crash)
-    step_result = env.step(WarehouseAction(action_id=0, plan_response=plan.model_dump_json()))
-    assert step_result.observation is not None
+    step_observation = env.step(WarehouseAction(action_id=0, plan_response=plan.model_dump_json()))
+    assert step_observation is not None
     
     # 4. Check that state tracking is initialized correctly
-    state = env.state()
+    state = env.state
     assert state.step_count == 1
     assert state.max_steps == 45
     assert state.task_name == "simple_order"
