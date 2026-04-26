@@ -1,0 +1,14 @@
+{
+  "episodes": 2000,
+  "baseline_score": 0.25,
+  "final_score": 0.7409,
+  "final_avg_score": 0.6988,
+  "improvement_pct": 179.5,
+  "algorithm": "DQN with curriculum learning",
+  "curriculum_levels": [
+    "simple_order",
+    "multi_step_order",
+    "order_queue",
+    "adaptive_fulfillment"
+  ]
+}

@@ -61,20 +61,39 @@ The environment lives in `warehouse_env/server/multi_robot_environment.py` and i
 
 ## Training Evidence
 
-Run `python -m warehouse_env.train` to generate reward/loss charts and `metrics.json` under `docs/plots/` on your machine (paths match [warehouse_env/train.py](warehouse_env/train.py)).
+### Reward Curve
+![Training Reward](docs/plots/training_reward.png)
 
-- [Results Summary](results/TRAINING_SUMMARY.md)
-- [Colab Notebook](notebooks/training_colab.ipynb)
+### Loss Curve
+![Training Loss](docs/plots/training_loss.png)
+
+The smoothed reward curve rises above the random-policy baseline as the curriculum progresses through `simple_order` → `multi_step_order` → `order_queue` → `adaptive_fulfillment`. TD loss decays as the replay buffer fills and the target network stabilises; brief spikes correspond to curriculum promotions.
+
+- [Full Results & Analysis](results/TRAINING_SUMMARY.md)
+- [DQN Training Colab Notebook](notebooks/training_colab.ipynb) *(re-runnable on Colab free tier, ~25 min)*
+- [LLM Fine-Tuning Colab (TRL / LoRA)](notebooks/llm_trl_finetuning_colab.ipynb) *(fine-tunes Llama on synthetic expert trajectories)*
+
+## Judge Links
+
+| Resource | Link |
+|---|---|
+| **HF Space (live demo)** | https://huggingface.co/spaces/XPOGBOY/meta-hackathon-2026 |
+| **GitHub** | https://github.com/XPOGBOY/meta-hackathon-2026 |
+| **Blog Post** | [docs/BLOG_POST.md](docs/BLOG_POST.md) |
+| **DQN Training Colab** | [notebooks/training_colab.ipynb](notebooks/training_colab.ipynb) |
+| **TRL / LLM Fine-Tuning Colab** | [notebooks/llm_trl_finetuning_colab.ipynb](notebooks/llm_trl_finetuning_colab.ipynb) |
+| **Results Summary** | [results/TRAINING_SUMMARY.md](results/TRAINING_SUMMARY.md) |
+| **YouTube Demo** | *(add URL after uploading)* |
 
 ## Submission Artifacts
 
 ### Storytelling
 - [Blog Post](docs/BLOG_POST.md)
-- YouTube Video: *(link in SUBMISSION_URLS.txt)*
+- YouTube Demo: *(add URL after uploading)*
 
 ### Infrastructure
-- GitHub: *(this repo)*
-- HF Spaces: https://huggingface.co/spaces/ArjunMadhava/warehouse-env
+- GitHub: https://github.com/XPOGBOY/meta-hackathon-2026
+- HF Space: https://huggingface.co/spaces/XPOGBOY/meta-hackathon-2026
 
 ## Local Run
 
