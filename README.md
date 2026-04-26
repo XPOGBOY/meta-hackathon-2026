@@ -15,7 +15,7 @@ title: Meta Hackathon 2026
 
 This repository contains Arjun Madhava's OpenEnv-compliant warehouse environment for the Meta PyTorch OpenEnv Hackathon 2026 Grand Finale, held April 25-26 at Scaler School of Technology in Bangalore. The current system focuses on adaptive order fulfillment: natural-language instructions are parsed into structured plans, then executed with dependency-aware BFS/TSP routing, bounded algorithmic rewards, and a lightweight self-improvement loop.
 
-The canonical project walkthrough lives in [warehouse_env/README.md](warehouse_env/README.md). The formal judge-facing deliverable is in [docs/problem_statement.md](docs/problem_statement.md).
+The canonical project walkthrough lives in [warehouse_env/README.md](warehouse_env/README.md). Background and narrative for judges are in [docs/BLOG_POST.md](docs/BLOG_POST.md).
 
 ## Submission Context
 
@@ -61,9 +61,8 @@ The environment lives in `warehouse_env/server/multi_robot_environment.py` and i
 
 ## Training Evidence
 
-- [Training Reward Curve](docs/plots/training_reward.png)
-- [Training Loss Curve](docs/plots/training_loss.png)
-- [Metrics JSON](docs/plots/metrics.json)
+Run `python -m warehouse_env.train` to generate reward/loss charts and `metrics.json` under `docs/plots/` on your machine (paths match [warehouse_env/train.py](warehouse_env/train.py)).
+
 - [Results Summary](results/TRAINING_SUMMARY.md)
 - [Colab Notebook](notebooks/training_colab.ipynb)
 
@@ -71,7 +70,6 @@ The environment lives in `warehouse_env/server/multi_robot_environment.py` and i
 
 ### Storytelling
 - [Blog Post](docs/BLOG_POST.md)
-- [Pitch Script](docs/PITCH_SCRIPT.md)
 - YouTube Video: *(link in SUBMISSION_URLS.txt)*
 
 ### Infrastructure
